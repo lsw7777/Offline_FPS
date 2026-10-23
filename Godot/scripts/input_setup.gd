@@ -12,9 +12,6 @@ func _ready() -> void:
 	_add_key("crouch", KEY_CTRL)
 	_add_key("reload", KEY_R)
 	_add_key("melee", KEY_V)
-	_add_key("map_sand", KEY_F1)
-	_add_key("map_ship", KEY_F2)
-	_add_key("map_maze", KEY_F3)
 	for i in range(6):
 		_add_key("weapon_%d" % (i + 1), KEY_1 + i)
 

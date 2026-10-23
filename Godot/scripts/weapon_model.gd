@@ -1,103 +1,234 @@
 extends Node3D
-## First-person weapon viewmodel + arms, built procedurally and attached to the
-## camera. Rebuilds per weapon so each gun has a distinct silhouette.
+## Detailed first-person weapon viewmodel + arms, built procedurally.
+## Each weapon class gets a distinct, multi-part silhouette.
 
-const METAL := Color(0.16, 0.16, 0.18)
-const METAL_DARK := Color(0.09, 0.09, 0.11)
-const WOOD := Color(0.45, 0.30, 0.18)
-const SKIN := Color(0.88, 0.72, 0.58)
-const ACCENT := Color(0.85, 0.55, 0.15)
+const METAL := Color(0.17, 0.17, 0.19)
+const METAL_HI := Color(0.28, 0.28, 0.31)
+const METAL_DARK := Color(0.08, 0.08, 0.10)
+const WOOD := Color(0.42, 0.28, 0.16)
+const POLY := Color(0.12, 0.12, 0.13)
+const SKIN := Color(0.86, 0.70, 0.56)
+const SLEEVE := Color(0.16, 0.20, 0.22)
 
 var muzzle: Marker3D = null
-
-var _flash: Node3D = null
-var _flash_light: OmniLight3D = null
+var _gun_root: Node3D = null
+var _base_pos := Vector3(0.32, -0.28, -0.55)
+var _ads_pos := Vector3(0.0, -0.075, -0.40)
+var _t := 0.0
+var aiming := false
+var _aim_t := 0.0
 
 
 func _ready() -> void:
-	# muzzle marker (gun tip)
-	var m := Marker3D.new()
-	m.name = "Muzzle"
-	m.position = Vector3(0, 0.03, -0.62)
-	add_child(m)
-	muzzle = m
+	set_process(true)
+	muzzle = Marker3D.new()
+	muzzle.name = "Muzzle"
+	muzzle.position = Vector3(0, 0.03, -0.70)
+	add_child(muzzle)
+
+
+func set_aiming(a: bool) -> void:
+	aiming = a
+
+
+func _process(delta: float) -> void:
+	if _gun_root == null:
+		return
+
+	# blend between hip-fire pose and aim-down-sights pose
+	_aim_t = move_toward(_aim_t, 1.0 if aiming else 0.0, delta * 9.0)
+
+	_t += delta
+	var spd := 0.0
+	var cam := get_parent()
+	if cam and cam.get_parent() is CharacterBody3D:
+		var v: Vector3 = cam.get_parent().velocity
+		spd = Vector2(v.x, v.z).length()
+
+	# sway only while hip-firing (steady when aiming)
+	var amp := minf(spd / 6.0, 1.0) * 0.012 * (1.0 - _aim_t)
+	var target := _base_pos.lerp(_ads_pos, _aim_t)
+	target.y += sin(_t * 10.0) * amp
+	target.x += sin(_t * 5.0) * amp * 0.5
+	_gun_root.position = target
+
+
+## Eject a brass casing from the right side of the receiver.
+func eject_shell() -> void:
+	if _gun_root == null:
+		return
+	var cam := get_parent()
+	if cam == null:
+		return
+	var root: Node = cam.get_parent()
+	if root == null:
+		return
+	var world: Node = root.get_parent()
+	if world == null:
+		return
+
+	var shell := MeshInstance3D.new()
+	shell.set_script(load("res://Godot/scripts/shell.gd"))
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.022, 0.022, 0.055)
+	shell.mesh = bm
+	shell.material_override = WBPrim.mat(Color(0.86, 0.66, 0.22), Color(0, 0, 0), 1.0, 0.9, 0.35)
+	world.add_child(shell)
+	shell.global_position = _gun_root.to_global(Vector3(0.055, 0.02, -0.02))
+
+	var cam3d := cam as Camera3D
+	if cam3d:
+		var basis: Basis = cam3d.global_transform.basis
+		shell.set("vel", basis.x * 3.2 + basis.y * 2.2 + basis.z * 1.2)
+	shell.set("spin", Vector3(randf_range(-9, 9), randf_range(-9, 9), randf_range(-9, 9)))
 
 
 func build(weapon: Dictionary) -> void:
 	_clear_gun()
 	var cls: String = weapon.get("class", "")
-	var root := Node3D.new()
-	root.name = "Gun"
-	root.position = Vector3(0.30, -0.26, -0.55)
+	_gun_root = Node3D.new()
+	_gun_root.name = "Gun"
+	_gun_root.position = _base_pos
+	add_child(_gun_root)
 
-	# common: receiver body
-	root.add_child(_part(WBPrim.mesh_box(Vector3(0.07, 0.10, 0.42), METAL), Vector3(0, 0, -0.08)))
-	# barrel (points -Z: cylinder default axis is Y, so rotate X by 90 deg)
-	var barrel_len := 0.30
-	var barrel_r := 0.022
+	var end_z := -0.70
 	match cls:
 		"HeavyPistol":
-			barrel_len = 0.18; barrel_r = 0.03
-		"PumpShotgun":
-			barrel_len = 0.34; barrel_r = 0.032
-		"BoltSniper":
-			barrel_len = 0.46; barrel_r = 0.02
-		"SquadAutomaticWeapon":
-			barrel_len = 0.40; barrel_r = 0.026
-	var barrel := WBPrim.mesh_cyl(barrel_len, barrel_r, METAL_DARK)
-	barrel.rotation_degrees = Vector3(90, 0, 0)
-	root.add_child(_part(barrel, Vector3(0, 0.02, -0.30 - barrel_len * 0.5 + 0.05)))
-
-	# grip
-	root.add_child(_part(WBPrim.mesh_box(Vector3(0.05, 0.14, 0.07), METAL_DARK), Vector3(0, -0.12, 0.06)))
-	# magazine (rifle/smg) or stock
-	match cls:
-		"AssaultRifle":
-			var mag := WBPrim.mesh_box(Vector3(0.05, 0.16, 0.08), METAL)
-			mag.rotation_degrees = Vector3(0, 0, 18)
-			root.add_child(_part(mag, Vector3(0, -0.16, 0.12)))
-			root.add_child(_part(WBPrim.mesh_box(Vector3(0.06, 0.09, 0.16), WOOD), Vector3(0, -0.01, 0.24)))
-			root.add_child(_part(WBPrim.mesh_box(Vector3(0.05, 0.06, 0.12), WOOD), Vector3(0, 0.06, -0.10)))
+			end_z = _build_pistol()
 		"SMG":
-			root.add_child(_part(WBPrim.mesh_box(Vector3(0.05, 0.18, 0.06), METAL), Vector3(0, -0.18, 0.10)))
-			root.add_child(_part(WBPrim.mesh_box(Vector3(0.05, 0.07, 0.12), METAL), Vector3(0, -0.02, 0.18)))
+			end_z = _build_smg()
 		"PumpShotgun":
-			root.add_child(_part(WBPrim.mesh_box(Vector3(0.06, 0.09, 0.16), WOOD), Vector3(0, -0.01, 0.22)))
-			var tube := WBPrim.mesh_cyl(0.22, 0.02, METAL_DARK)
-			tube.rotation_degrees = Vector3(90, 0, 0)
-			root.add_child(_part(tube, Vector3(0, -0.05, -0.12)))
+			end_z = _build_shotgun()
 		"BoltSniper":
-			root.add_child(_part(WBPrim.mesh_box(Vector3(0.06, 0.10, 0.18), WOOD), Vector3(0, -0.01, 0.26)))
-			var scope := WBPrim.mesh_cyl(0.16, 0.035, METAL_DARK)
-			scope.rotation_degrees = Vector3(90, 0, 0)
-			root.add_child(_part(scope, Vector3(0, 0.09, -0.12)))
+			end_z = _build_sniper()
 		"SquadAutomaticWeapon":
-			root.add_child(_part(WBPrim.mesh_box(Vector3(0.09, 0.12, 0.30), METAL), Vector3(0, -0.05, -0.10)))
-			root.add_child(_part(WBPrim.mesh_box(Vector3(0.08, 0.14, 0.10), METAL_DARK), Vector3(0, -0.18, 0.02)))
-			root.add_child(_part(WBPrim.mesh_box(Vector3(0.06, 0.09, 0.14), METAL), Vector3(0, -0.01, 0.20)))
+			end_z = _build_mg()
 		_:
-			pass
+			end_z = _build_rifle()
 
-	# hands + forearms (skin)
-	var lh := WBPrim.mesh_cyl(0.16, 0.035, SKIN)
-	lh.rotation_degrees = Vector3(80, 0, 0)
-	root.add_child(_part(lh, Vector3(-0.04, -0.10, 0.02)))
-	var rh := WBPrim.mesh_cyl(0.14, 0.035, SKIN)
-	rh.rotation_degrees = Vector3(75, 0, 0)
-	root.add_child(_part(rh, Vector3(0.04, -0.14, 0.05)))
-
-	add_child(root)
+	_build_arms(cls)
+	if muzzle:
+		muzzle.position = Vector3(0, 0.02, end_z)
 
 
-func _part(mi: MeshInstance3D, pos: Vector3) -> MeshInstance3D:
-	mi.position = pos
-	return mi
+# --------------------------------------------------------------- builders --
+func _add(mesh: MeshInstance3D, pos: Vector3, rot: Vector3 = Vector3.ZERO) -> MeshInstance3D:
+	mesh.position = pos
+	mesh.rotation_degrees += rot
+	_gun_root.add_child(mesh)
+	return mesh
+
+
+func _cyl_z(height: float, radius: float, color: Color) -> MeshInstance3D:
+	var m := WBPrim.mesh_cyl(height, radius, color)
+	m.rotation_degrees = Vector3(90, 0, 0)
+	return m
+
+
+func _common_sights(front_z: float) -> void:
+	_add(WBPrim.mesh_box(Vector3(0.02, 0.06, 0.02), METAL_DARK), Vector3(0, 0.09, front_z))
+	_add(WBPrim.mesh_box(Vector3(0.05, 0.03, 0.03), METAL_DARK), Vector3(0, 0.085, 0.06))
+	_add(WBPrim.mesh_box(Vector3(0.03, 0.015, 0.10), METAL_HI), Vector3(0, 0.075, -0.12))
+
+
+func _build_pistol() -> float:
+	_add(WBPrim.mesh_box(Vector3(0.06, 0.09, 0.26), METAL), Vector3(0, 0, -0.02))
+	_add(WBPrim.mesh_box(Vector3(0.065, 0.045, 0.26), METAL_HI), Vector3(0, 0.055, -0.02))  # slide
+	_add(_cyl_z(0.14, 0.024, METAL_DARK), Vector3(0, 0.01, -0.22))
+	_add(WBPrim.mesh_box(Vector3(0.05, 0.14, 0.07), POLY), Vector3(0, -0.11, 0.06), Vector3(12, 0, 0))
+	_add(WBPrim.mesh_box(Vector3(0.03, 0.02, 0.05), METAL_HI), Vector3(0, -0.05, 0.02))
+	_common_sights(-0.08)
+	return -0.30
+
+
+func _build_smg() -> float:
+	_add(WBPrim.mesh_box(Vector3(0.07, 0.10, 0.34), METAL), Vector3(0, 0, -0.04))
+	_add(WBPrim.mesh_box(Vector3(0.06, 0.07, 0.18), POLY), Vector3(0, 0.005, -0.28))
+	_add(_cyl_z(0.16, 0.019, METAL_DARK), Vector3(0, 0.02, -0.42))
+	_add(_cyl_z(0.05, 0.026, METAL_HI), Vector3(0, 0.02, -0.50))
+	_add(WBPrim.mesh_box(Vector3(0.05, 0.16, 0.06), METAL), Vector3(0, -0.16, 0.06))
+	_add(WBPrim.mesh_box(Vector3(0.05, 0.12, 0.07), POLY), Vector3(0, -0.12, 0.09), Vector3(10, 0, 0))
+	_add(WBPrim.mesh_box(Vector3(0.05, 0.08, 0.14), METAL), Vector3(0, -0.01, 0.20))
+	_common_sights(-0.32)
+	return -0.52
+
+
+func _build_rifle() -> float:
+	_add(WBPrim.mesh_box(Vector3(0.07, 0.10, 0.42), METAL), Vector3(0, 0, -0.06))
+	_add(WBPrim.mesh_box(Vector3(0.06, 0.075, 0.24), WOOD), Vector3(0, 0.005, -0.32))
+	_add(_cyl_z(0.24, 0.019, METAL_DARK), Vector3(0, 0.02, -0.52))
+	_add(_cyl_z(0.06, 0.028, METAL_HI), Vector3(0, 0.02, -0.66))
+	var mag := _add(WBPrim.mesh_box(Vector3(0.055, 0.18, 0.08), METAL), Vector3(0, -0.18, 0.10), Vector3(0, 0, 16))
+	_add(WBPrim.mesh_box(Vector3(0.05, 0.13, 0.07), WOOD), Vector3(0, -0.12, 0.06), Vector3(12, 0, 0))
+	_add(WBPrim.mesh_box(Vector3(0.06, 0.09, 0.18), WOOD), Vector3(0, -0.01, 0.26))
+	_add(WBPrim.mesh_box(Vector3(0.04, 0.02, 0.12), METAL_HI), Vector3(0.05, 0.03, 0.02))  # charging handle
+	_common_sights(-0.42)
+	return -0.72
+
+
+func _build_shotgun() -> float:
+	_add(WBPrim.mesh_box(Vector3(0.075, 0.10, 0.40), METAL_DARK), Vector3(0, 0, -0.06))
+	_add(_cyl_z(0.34, 0.033, METAL_DARK), Vector3(0, 0.03, -0.42))
+	_add(_cyl_z(0.26, 0.022, METAL), Vector3(0, -0.03, -0.36))  # tube magazine
+	var pump := _add(WBPrim.mesh_box(Vector3(0.07, 0.08, 0.16), WOOD), Vector3(0, -0.02, -0.30))
+	_add(WBPrim.mesh_box(Vector3(0.06, 0.10, 0.20), WOOD), Vector3(0, -0.01, 0.24))
+	_add(WBPrim.mesh_box(Vector3(0.05, 0.13, 0.07), WOOD), Vector3(0, -0.12, 0.06), Vector3(12, 0, 0))
+	_common_sights(-0.52)
+	return -0.60
+
+
+func _build_sniper() -> float:
+	_add(WBPrim.mesh_box(Vector3(0.07, 0.10, 0.46), METAL), Vector3(0, 0, -0.06))
+	_add(_cyl_z(0.44, 0.017, METAL_DARK), Vector3(0, 0.02, -0.62))
+	_add(_cyl_z(0.07, 0.026, METAL_HI), Vector3(0, 0.02, -0.86))
+	# scope: tube + two rings + lens
+	_add(_cyl_z(0.30, 0.036, METAL_DARK), Vector3(0, 0.10, -0.14))
+	_add(WBPrim.mesh_cyl(0.03, 0.042, METAL_HI), Vector3(0, 0.10, -0.02), Vector3(90, 0, 0))
+	_add(WBPrim.mesh_cyl(0.03, 0.042, METAL_HI), Vector3(0, 0.10, -0.26), Vector3(90, 0, 0))
+	_add(_cyl_z(0.02, 0.032, Color(0.3, 0.5, 0.7)), Vector3(0, 0.10, -0.30))
+	# bolt handle
+	_add(WBPrim.mesh_cyl(0.10, 0.012, METAL_HI), Vector3(0.06, 0.03, 0.02), Vector3(0, 0, 70))
+	_add(WBPrim.mesh_box(Vector3(0.055, 0.18, 0.08), METAL), Vector3(0, -0.17, 0.12))
+	_add(WBPrim.mesh_box(Vector3(0.05, 0.13, 0.07), WOOD), Vector3(0, -0.12, 0.06), Vector3(12, 0, 0))
+	_add(WBPrim.mesh_box(Vector3(0.06, 0.10, 0.24), WOOD), Vector3(0, -0.02, 0.30))
+	return -0.92
+
+
+func _build_mg() -> float:
+	_add(WBPrim.mesh_box(Vector3(0.09, 0.12, 0.44), METAL), Vector3(0, 0, -0.06))
+	_add(_cyl_z(0.40, 0.024, METAL_DARK), Vector3(0, 0.02, -0.58))
+	_add(_cyl_z(0.10, 0.032, METAL_HI), Vector3(0, 0.02, -0.80))
+	_add(WBPrim.mesh_box(Vector3(0.07, 0.11, 0.16), POLY), Vector3(0, -0.01, -0.30))  # foregrip
+	_add(WBPrim.mesh_box(Vector3(0.09, 0.16, 0.12), METAL_DARK), Vector3(0.02, -0.20, 0.04))  # box mag
+	_add(WBPrim.mesh_box(Vector3(0.06, 0.10, 0.20), METAL), Vector3(0, -0.02, 0.28))
+	# bipod
+	_add(WBPrim.mesh_cyl(0.20, 0.010, METAL_HI), Vector3(-0.06, -0.14, -0.50), Vector3(0, 0, 20))
+	_add(WBPrim.mesh_cyl(0.20, 0.010, METAL_HI), Vector3(0.06, -0.14, -0.50), Vector3(0, 0, -20))
+	_common_sights(-0.48)
+	return -0.86
+
+
+func _build_arms(cls: String) -> void:
+	var right_hand_z := 0.06
+	var left_hand_z := -0.30
+	if cls == "HeavyPistol":
+		left_hand_z = 0.02
+
+	# right arm (grip)
+	_add(WBPrim.mesh_cyl(0.34, 0.045, SKIN), Vector3(0.12, -0.26, right_hand_z + 0.16), Vector3(64, 0, 8))
+	_add(WBPrim.mesh_cyl(0.14, 0.055, SLEEVE), Vector3(0.16, -0.36, right_hand_z + 0.26), Vector3(64, 0, 8))
+	_add(WBPrim.mesh_box(Vector3(0.07, 0.09, 0.10), SKIN), Vector3(0.02, -0.10, right_hand_z))
+	# left arm (foregrip)
+	_add(WBPrim.mesh_cyl(0.36, 0.043, SKIN), Vector3(-0.10, -0.26, left_hand_z + 0.10), Vector3(70, 0, -10))
+	_add(WBPrim.mesh_cyl(0.14, 0.053, SLEEVE), Vector3(-0.15, -0.38, left_hand_z + 0.20), Vector3(70, 0, -10))
+	_add(WBPrim.mesh_box(Vector3(0.07, 0.08, 0.10), SKIN), Vector3(0, -0.03, left_hand_z))
 
 
 func _clear_gun() -> void:
 	for c in get_children():
 		if c.name == "Gun":
 			c.free()
+	_gun_root = null
 
 
 func get_muzzle_global() -> Vector3:
@@ -106,27 +237,19 @@ func get_muzzle_global() -> Vector3:
 	return muzzle.global_position
 
 
-## Brief muzzle flash at the gun tip.
 func flash() -> void:
 	if muzzle == null:
 		return
-	if _flash == null:
-		_flash = WBPrim.mesh_sphere(0.07, Color(1, 0.9, 0.4), Color(1, 0.8, 0.3), 3.0)
-		_flash.name = "MuzzleFlash"
-		_flash.scale = Vector3(1, 1, 0.4)
-		muzzle.add_child(_flash)
-		_flash_light = OmniLight3D.new()
-		_flash_light.light_color = Color(1, 0.8, 0.4)
-		_flash_light.light_energy = 2.0
-		_flash_light.omni_range = 3.0
-		muzzle.add_child(_flash_light)
-	_flash.visible = true
-	_flash_light.visible = true
-	get_tree().create_timer(0.05).timeout.connect(_hide_flash)
-
-
-func _hide_flash() -> void:
-	if _flash:
-		_flash.visible = false
-	if _flash_light:
-		_flash_light.visible = false
+	var f := WBPrim.mesh_sphere(0.075, Color(1, 0.92, 0.45), Color(1, 0.8, 0.3), 3.0)
+	f.scale = Vector3(1, 1, 0.5)
+	muzzle.add_child(f)
+	var light := OmniLight3D.new()
+	light.light_color = Color(1, 0.8, 0.4)
+	light.light_energy = 2.2
+	light.omni_range = 3.5
+	muzzle.add_child(light)
+	get_tree().create_timer(0.05).timeout.connect(func():
+		if is_instance_valid(f):
+			f.queue_free()
+		if is_instance_valid(light):
+			light.queue_free())

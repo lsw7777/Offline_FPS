@@ -23,3 +23,9 @@
 - `extends SceneTree` 的 `--script` 模式里 `add_child` 不触发子节点 `_ready`；集成测试用 `extends Node` + `await get_tree().process_frame`。
 - `extends Node`（非 Node3D）没有 `get_world_3d()`，需经 `player.get_world_3d()`；射线排除用 `player.get_rid()`。
 - `--headless --import` 会刷 progress_dialog 报错，属无害噪音。
+- HUD 的 `Control` 挂在 `CanvasLayer` 下必须显式 `size = get_viewport_rect().size`；只设 anchors 不设 size 会让子控件尺寸为 0、右对齐按钮跑到屏幕外。
+- **无头模式下 viewport 只有 64×64**（不是 1280×720），靠 `get_viewport_rect().size` 算出的右上角坐标会变负 → 用 `maxf(0, vp.x - N)` 夹取，否则无头测试会误报"按钮出屏"。
+- 3D 血条用 `QuadMesh` + `StandardMaterial3D`（unshaded + BILLBOARD_ENABLED + no_depth_test）最省事，改 `QuadMesh.size.x` 即可做血量条。
+- **全屏 HUD 根 Control 必须 `mouse_filter = MOUSE_FILTER_IGNORE`**：默认 STOP + 全屏 size 会吞掉所有鼠标事件 → 视角转不动、点击不开火。子控件仍被独立命中，设置按钮照常可点。
+- 第一人称视角旋转用 **`_input(event)` 而非 `_unhandled_input`**：`_input` 在 GUI 之前，全屏控件吞不掉；再用 `Input.mouse_mode == MOUSE_MODE_CAPTURED` 作门槛。
+- **无头测试盲区**：无头没有光标，`gui_get_hovered_control()` 恒 null、`Input.mouse_mode` 恒 0（设不成 CAPTURED）→ 光标/命中相关 bug 必须用**真实窗口**跑一次集成测试（不加 `--headless`）。

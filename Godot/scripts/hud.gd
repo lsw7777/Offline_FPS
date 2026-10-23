@@ -1,57 +1,223 @@
 extends Control
-## HUD: crosshair, weapon, ammo, HP, map name, kill counter, damage vignette.
+## HUD: dynamic crosshair, weapon, ammo, HP, map name, kills, damage vignette,
+## and a top-right SETTINGS button that opens a panel (volume + map switch).
+
+signal map_selected(id: String)
+signal ui_state_changed(open: bool)
 
 var weapon_label: Label
 var ammo_label: Label
 var hp_label: Label
 var map_label: Label
 var kill_label: Label
-var crosshair: Label
 var hint: Label
 var vignette: ColorRect
 
+var settings_button: Button
+var settings_panel: Panel
+var volume_slider: HSlider
+var volume_value: Label
+
+var _vp := Vector2(1280, 720)
+var _cross_parts: Array[ColorRect] = []
+var _cross_center := Vector2.ZERO
+var _gap := 6.0
+var _base_gap := 6.0
+var _gap_target := 6.0
+
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_process(true)
+	_vp = get_viewport_rect().size
+	size = _vp
+	_cross_center = _vp * 0.5
+	# CRITICAL: the HUD covers the whole screen, so it must NOT swallow mouse
+	# events. Only the settings button / panel should be clickable.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	# vignette (bottom layer)
+	vignette = ColorRect.new()
+	vignette.position = Vector2.ZERO
+	vignette.size = _vp
+	vignette.color = Color(1, 0, 0, 0.0)
+	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(vignette)
 
 	weapon_label = _mk_label(Vector2(20, 20), "—", 22)
 	ammo_label = _mk_label(Vector2(20, 50), "— / —", 22)
 	hp_label = _mk_label(Vector2(20, 80), "HP 100", 20)
 	hp_label.add_theme_color_override("font_color", Color(1, 0.3, 0.3))
-
 	map_label = _mk_label(Vector2(20, 110), "地图：炽热沙城", 16)
 	map_label.add_theme_color_override("font_color", Color(1, 0.9, 0.4))
 
-	kill_label = _mk_label(Vector2(0, 20), "击杀 0", 18)
-	kill_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	kill_label.position = Vector2(-220, 20)
+	kill_label = _mk_label(Vector2(maxf(0.0, _vp.x - 220.0), 16), "击杀 0", 18)
+	kill_label.size = Vector2(200, 26)
 	kill_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
-	crosshair = _mk_label(Vector2.ZERO, "+", 30)
-	var c := get_viewport_rect().size * 0.5
-	crosshair.position = c - Vector2(9, 14)
-	crosshair.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
+	_build_crosshair()
 
-	hint = _mk_label(Vector2(0, get_viewport_rect().size.y - 46), "", 15)
-	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	hint = _mk_label(Vector2(0, maxf(0.0, _vp.y - 46.0)), "", 15)
+	hint.size = Vector2(_vp.x, 24)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.text = "WASD 移动 · 左键 射击 · R 换弹 · 1-6 切枪 · V 近战 · F1/F2/F3 切地图 · Esc 释放鼠标"
+	hint.text = "WASD 移动 · 左键 射击 · 右键 瞄准(切换) · R 换弹 · 1-6 切枪 · V 近战 · Esc 释放鼠标→设置"
 
-	# damage vignette
-	vignette = ColorRect.new()
-	vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
-	vignette.color = Color(1, 0, 0, 0.0)
-	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(vignette)
+	settings_button = Button.new()
+	settings_button.text = "设置"
+	settings_button.position = Vector2(maxf(0.0, _vp.x - 150.0), 52)
+	settings_button.size = Vector2(130, 40)
+	settings_button.add_theme_font_size_override("font_size", 16)
+	settings_button.pressed.connect(_on_settings_pressed)
+	add_child(settings_button)
+
+	_build_settings_panel()
 
 
-func _mk_label(pos: Vector2, text: String, size: int) -> Label:
+func _build_crosshair() -> void:
+	for i in range(4):
+		var r := ColorRect.new()
+		r.color = Color(1, 1, 1, 0.9)
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(r)
+		_cross_parts.append(r)
+	_layout_crosshair()
+
+
+func _layout_crosshair() -> void:
+	if _cross_parts.size() < 4:
+		return
+	var length := 9.0
+	var thick := 2.0
+	var c := _cross_center
+	var g := _gap
+	_cross_parts[0].position = Vector2(c.x - thick * 0.5, c.y - g - length)
+	_cross_parts[0].size = Vector2(thick, length)
+	_cross_parts[1].position = Vector2(c.x - thick * 0.5, c.y + g)
+	_cross_parts[1].size = Vector2(thick, length)
+	_cross_parts[2].position = Vector2(c.x - g - length, c.y - thick * 0.5)
+	_cross_parts[2].size = Vector2(length, thick)
+	_cross_parts[3].position = Vector2(c.x + g, c.y - thick * 0.5)
+	_cross_parts[3].size = Vector2(length, thick)
+
+
+func _process(delta: float) -> void:
+	_gap = lerpf(_gap, _gap_target, clampf(delta * 12.0, 0.0, 1.0))
+	_layout_crosshair()
+
+
+# ---- crosshair state ----
+func on_shot_fired() -> void:
+	_gap_target = _base_gap + 11.0
+	get_tree().create_timer(0.07).timeout.connect(_reset_gap)
+
+
+func _reset_gap() -> void:
+	_gap_target = _base_gap
+
+
+func on_aim_changed(aiming: bool) -> void:
+	_base_gap = 3.0 if aiming else 6.0
+	_gap_target = _base_gap
+
+
+# ---- settings panel ----
+func _build_settings_panel() -> void:
+	settings_panel = Panel.new()
+	settings_panel.size = Vector2(380, 300)
+	settings_panel.position = Vector2(_vp.x * 0.5 - 190, _vp.y * 0.5 - 150)
+	settings_panel.visible = false
+	add_child(settings_panel)
+
+	var title := Label.new()
+	title.text = "设置"
+	title.position = Vector2(20, 12)
+	title.add_theme_font_size_override("font_size", 22)
+	settings_panel.add_child(title)
+
+	var vol_label := Label.new()
+	vol_label.text = "音量"
+	vol_label.position = Vector2(20, 62)
+	vol_label.add_theme_font_size_override("font_size", 17)
+	settings_panel.add_child(vol_label)
+
+	volume_slider = HSlider.new()
+	volume_slider.min_value = 0.0
+	volume_slider.max_value = 1.0
+	volume_slider.step = 0.01
+	volume_slider.position = Vector2(90, 62)
+	volume_slider.size = Vector2(200, 26)
+	var bus_idx := AudioServer.get_bus_index("Master")
+	var cur := 0.8
+	if bus_idx >= 0 and not AudioServer.is_bus_mute(bus_idx):
+		cur = clampf(db_to_linear(AudioServer.get_bus_volume_db(bus_idx)), 0.0, 1.0)
+	volume_slider.value = cur
+	volume_slider.value_changed.connect(_on_volume_changed)
+	settings_panel.add_child(volume_slider)
+
+	volume_value = Label.new()
+	volume_value.text = "%d%%" % int(cur * 100)
+	volume_value.position = Vector2(300, 60)
+	volume_value.add_theme_font_size_override("font_size", 15)
+	settings_panel.add_child(volume_value)
+
+	var map_title := Label.new()
+	map_title.text = "切换地图"
+	map_title.position = Vector2(20, 108)
+	map_title.add_theme_font_size_override("font_size", 17)
+	settings_panel.add_child(map_title)
+
+	var maps := [
+		{"id": "sand_city", "name": "炽热沙城"},
+		{"id": "transport_ship", "name": "运输船"},
+		{"id": "maze", "name": "迷宫"},
+	]
+	for i in range(maps.size()):
+		var b := Button.new()
+		b.text = maps[i]["name"]
+		b.position = Vector2(20 + i * 115, 140)
+		b.size = Vector2(105, 38)
+		b.add_theme_font_size_override("font_size", 15)
+		var mid: String = maps[i]["id"]
+		b.pressed.connect(func(): _on_map_selected(mid))
+		settings_panel.add_child(b)
+
+	var close_btn := Button.new()
+	close_btn.text = "关闭"
+	close_btn.position = Vector2(20, 240)
+	close_btn.size = Vector2(340, 40)
+	close_btn.add_theme_font_size_override("font_size", 16)
+	close_btn.pressed.connect(_on_settings_pressed)
+	settings_panel.add_child(close_btn)
+
+
+func _mk_label(pos: Vector2, text: String, size_px: int) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.position = pos
-	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_font_size_override("font_size", size_px)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(l)
 	return l
+
+
+func _on_settings_pressed() -> void:
+	settings_panel.visible = not settings_panel.visible
+	ui_state_changed.emit(settings_panel.visible)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if settings_panel.visible else Input.MOUSE_MODE_CAPTURED
+
+
+func _on_volume_changed(v: float) -> void:
+	var bus := AudioServer.get_bus_index("Master")
+	if bus >= 0:
+		AudioServer.set_bus_mute(bus, v <= 0.001)
+		AudioServer.set_bus_volume_db(bus, linear_to_db(maxf(v, 0.001)))
+	volume_value.text = "%d%%" % int(v * 100)
+
+
+func _on_map_selected(id: String) -> void:
+	map_selected.emit(id)
+	settings_panel.visible = false
+	ui_state_changed.emit(false)
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func on_weapon_changed(id: String, display: String) -> void:
@@ -75,6 +241,6 @@ func on_kill(count: int) -> void:
 
 
 func on_damage() -> void:
-	vignette.color = Color(1, 0, 0, 0.35)
+	vignette.color = Color(1, 0, 0, 0.45)
 	var tween := create_tween()
-	tween.tween_property(vignette, "color", Color(1, 0, 0, 0.0), 0.3)
+	tween.tween_property(vignette, "color", Color(1, 0, 0, 0.0), 0.35)
