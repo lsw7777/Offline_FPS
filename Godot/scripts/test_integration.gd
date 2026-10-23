@@ -177,6 +177,36 @@ func _ready() -> void:
 			ok = false
 			print("FAIL: gun inspect animation not triggered")
 
+	# PBR textures on gun parts + inspect light
+	if wm:
+		var pbr_gun = wm.get_node_or_null("Gun")
+		var tex_count := 0
+		if pbr_gun:
+			for c in pbr_gun.get_children():
+				if c is MeshInstance3D and c.material_override is StandardMaterial3D:
+					if c.material_override.albedo_texture != null:
+						tex_count += 1
+		print("textured gun parts=%d" % tex_count)
+		if tex_count < 3:
+			ok = false
+			print("FAIL: PBR textures not applied to gun")
+		wm._anim = ""
+		wm.play_inspect()
+		for i in range(20):
+			await get_tree().process_frame
+		if wm._inspect_light == null or wm._inspect_light.light_energy < 0.2:
+			ok = false
+			print("FAIL: inspect light did not light up")
+
+	# post-processing (SSAO) enabled on the map environment
+	var world_env = null
+	for c in main.map_root.get_children():
+		if c is WorldEnvironment:
+			world_env = c
+	if world_env == null or not world_env.environment.ssao_enabled:
+		ok = false
+		print("FAIL: SSAO not enabled on map environment")
+
 	# range map: no enemies, has targets
 	var rinfo: Dictionary = WBMapBuilder.build("range")
 	var rtargets: Array = rinfo.get("targets", [])

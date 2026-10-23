@@ -13,11 +13,19 @@ var _switch_t := 0.0
 var _switch_dur := 0.30
 var _inspect_t := 0.0
 var _active := false
+var _inspect_light: OmniLight3D = null
 
 
 func _ready() -> void:
 	set_process(true)
 	visible = false
+
+	_inspect_light = OmniLight3D.new()
+	_inspect_light.light_color = Color(1.0, 0.94, 0.86)
+	_inspect_light.light_energy = 0.0
+	_inspect_light.omni_range = 1.8
+	_inspect_light.position = Vector3(0.18, 0.02, -0.38)
+	add_child(_inspect_light)
 
 
 func set_active(a: bool) -> void:
@@ -80,6 +88,33 @@ func build(data: Dictionary) -> void:
 	_add(WBPrim.mesh_box(Vector3(0.075, 0.085, 0.11), SKIN), Vector3(0.01, -0.02, 0.05))
 	_add(WBPrim.mesh_box(Vector3(0.055, 0.06, 0.06), SKIN), Vector3(0.02, -0.05, 0.10))
 
+	# handle rivets (full-tang look)
+	for i in range(3):
+		var rv := WBPrim.mesh_cyl(0.008, 0.007, STEEL_DARK)
+		rv.rotation_degrees = Vector3(0, 0, 90)
+		_add(rv, Vector3(0.0, 0.0, -0.02 + i * 0.05))
+	# jimping on the spine
+	for i in range(5):
+		_add(WBPrim.mesh_box(Vector3(blade_w + 0.003, 0.008, 0.008), STEEL_DARK), Vector3(0, 0.049, -0.09 - i * 0.014))
+	# lanyard hole
+	var lh := WBPrim.mesh_cyl(0.012, 0.008, STEEL_DARK)
+	lh.rotation_degrees = Vector3(90, 0, 0)
+	_add(lh, Vector3(0, 0, 0.115))
+
+	_apply_pbr(_root)
+
+
+## Swap flat colours for runtime PBR textures (steel / wood / polymer).
+func _apply_pbr(root: Node3D) -> void:
+	if root == null:
+		return
+	for c in root.get_children():
+		if c is MeshInstance3D and c.material_override is StandardMaterial3D:
+			var col: Color = c.material_override.albedo_color
+			var m := WBTex.pbr_for(col)
+			if m:
+				c.material_override = m
+
 
 func _add(mesh: MeshInstance3D, pos: Vector3, rot: Vector3 = Vector3.ZERO) -> MeshInstance3D:
 	mesh.position = pos
@@ -105,13 +140,20 @@ func _process(delta: float) -> void:
 		return
 	_t += delta
 
-	# inspect: slow spin to show the blade
+	_root.scale = Vector3.ONE
+	if _inspect_light:
+		_inspect_light.light_energy = move_toward(_inspect_light.light_energy, 0.0, delta * 8.0)
+
+	# inspect: lift to centre, orbit slowly, warm light, slight scale-up
 	if _inspect_t > 0.0:
 		_inspect_t -= delta
 		var it: float = 1.0 - clampf(_inspect_t / 1.4, 0.0, 1.0)
 		var ik: float = sin(it * PI)
-		_root.rotation_degrees = Vector3(8.0 + 10.0 * ik, -12.0 - 260.0 * ik, 0.0)
-		_root.position = Vector3(0.30, -0.30 + 0.02 * ik, -0.50)
+		_root.rotation_degrees = Vector3(8.0 - 18.0 * ik, -12.0 - 300.0 * ik, -22.0 * ik)
+		_root.position = Vector3(0.30 - 0.10 * ik, -0.30 + 0.05 * ik, -0.50 + 0.10 * ik)
+		_root.scale = Vector3.ONE * (1.0 + 0.08 * ik)
+		if _inspect_light:
+			_inspect_light.light_energy = 2.6 * ik
 		return
 
 	# draw animation: knife flips in from the right

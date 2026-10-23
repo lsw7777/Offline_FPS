@@ -133,6 +133,14 @@ func _build_player() -> Node:
 	mm.set_script(load("res://Godot/scripts/melee_model.gd"))
 	cam.add_child(mm)
 
+	# small key light so the viewmodel reads well even in dark maps
+	var vm_light := OmniLight3D.new()
+	vm_light.light_color = Color(1.0, 0.96, 0.90)
+	vm_light.light_energy = 0.9
+	vm_light.omni_range = 2.2
+	vm_light.position = Vector3(0.12, 0.05, -0.25)
+	cam.add_child(vm_light)
+
 	var col := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
 	cap.radius = 0.3

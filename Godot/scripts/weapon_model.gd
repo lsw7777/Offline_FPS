@@ -21,6 +21,7 @@ var _class := ""
 var _anim := ""
 var _anim_t := 0.0
 var _anim_dur := 1.0
+var _inspect_light: OmniLight3D = null
 
 
 func _ready() -> void:
@@ -29,6 +30,14 @@ func _ready() -> void:
 	muzzle.name = "Muzzle"
 	muzzle.position = Vector3(0, 0.03, -0.70)
 	add_child(muzzle)
+
+	# small warm light used while inspecting so the gun reads even in dark maps
+	_inspect_light = OmniLight3D.new()
+	_inspect_light.light_color = Color(1.0, 0.94, 0.86)
+	_inspect_light.light_energy = 0.0
+	_inspect_light.omni_range = 1.8
+	_inspect_light.position = Vector3(0.18, 0.02, -0.38)
+	add_child(_inspect_light)
 
 
 func set_aiming(a: bool) -> void:
@@ -46,6 +55,10 @@ func set_active(a: bool) -> void:
 func _process(delta: float) -> void:
 	if _gun_root == null:
 		return
+
+	_gun_root.scale = Vector3.ONE
+	if _inspect_light:
+		_inspect_light.light_energy = move_toward(_inspect_light.light_energy, 0.0, delta * 8.0)
 
 	# blend between hip-fire pose and aim-down-sights pose
 	_aim_t = move_toward(_aim_t, 1.0 if aiming else 0.0, delta * 9.0)
@@ -100,9 +113,16 @@ func _process(delta: float) -> void:
 			off.z += 0.10 * k
 			rot.x += 38.0 * k
 		elif _anim == "inspect":
-			off.y += 0.03 * k
-			rot.y += 58.0 * k
-			rot.z += 18.0 * k
+			# lift to centre, bring closer, orbit the weapon, warm key light
+			off.x -= 0.10 * k
+			off.y += 0.05 * k
+			off.z += 0.10 * k
+			rot.y += 84.0 * k
+			rot.x += -14.0 * k
+			rot.z += -24.0 * k
+			_gun_root.scale = Vector3.ONE * (1.0 + 0.06 * k)
+			if _inspect_light:
+				_inspect_light.light_energy = 2.6 * k
 		if _anim_t <= 0.0:
 			_anim = ""
 
@@ -232,8 +252,45 @@ func build(weapon: Dictionary) -> void:
 			end_z = _build_rifle()
 
 	_build_arms(cls)
+	_add_greebles(cls)
+	_apply_pbr(_gun_root)
 	if muzzle:
 		muzzle.position = Vector3(0, 0.02, end_z)
+
+
+## Small mechanical details (ports, screws, rails, trigger) for realism.
+func _add_greebles(cls: String) -> void:
+	# ejection port on the right side
+	_add(WBPrim.mesh_box(Vector3(0.006, 0.045, 0.10), POLY), Vector3(0.036, 0.03, -0.03))
+	# trigger + guard
+	_add(WBPrim.mesh_box(Vector3(0.012, 0.05, 0.012), METAL_DARK), Vector3(0, -0.095, 0.02))
+	_add(WBPrim.mesh_box(Vector3(0.052, 0.012, 0.095), METAL_DARK), Vector3(0, -0.072, 0.02))
+	# top rail slots
+	for i in range(3):
+		_add(WBPrim.mesh_box(Vector3(0.045, 0.012, 0.022), METAL_HI), Vector3(0, 0.088, -0.06 - i * 0.055))
+	# screws
+	for p in [Vector3(-0.032, 0.02, 0.06), Vector3(0.032, 0.02, 0.06), Vector3(-0.032, -0.03, -0.12), Vector3(0.032, -0.03, -0.12)]:
+		var sc := WBPrim.mesh_cyl(0.006, 0.009, METAL_HI)
+		sc.rotation_degrees = Vector3(0, 0, 90)
+		_add(sc, p)
+	# sling loop
+	_add(WBPrim.mesh_box(Vector3(0.018, 0.03, 0.018), METAL_HI), Vector3(0, -0.065, 0.30))
+	# muzzle-brake slots on long guns
+	if cls in ["AssaultRifle", "BoltSniper", "SquadAutomaticWeapon", "SMG"]:
+		for i in range(3):
+			_add(WBPrim.mesh_box(Vector3(0.030, 0.014, 0.008), METAL_DARK), Vector3(0, 0.02, -0.50 - i * 0.022))
+
+
+## Replace flat-colour materials with runtime PBR texture sets.
+func _apply_pbr(root: Node3D) -> void:
+	if root == null:
+		return
+	for c in root.get_children():
+		if c is MeshInstance3D and c.material_override is StandardMaterial3D:
+			var col: Color = c.material_override.albedo_color
+			var m := WBTex.pbr_for(col)
+			if m:
+				c.material_override = m
 
 
 # --------------------------------------------------------------- builders --

@@ -47,6 +47,20 @@ static func _env(root: Node3D, sky_top: Color, sky_horizon: Color, fog: Color,
 	e.fog_enabled = true
 	e.fog_light_color = fog
 	e.fog_density = fog_density
+	# richer lighting / shading (big realism boost on PBR materials)
+	e.ssao_enabled = true
+	e.ssao_radius = 1.6
+	e.ssao_intensity = 1.7
+	e.ssao_power = 1.4
+	e.ssr_enabled = true
+	e.ssr_max_steps = 56
+	e.glow_enabled = true
+	e.glow_intensity = 0.45
+	e.glow_bloom = 0.12
+	e.tonemap_mode = Environment.TONE_MAPPER_ACES
+	e.adjustment_enabled = true
+	e.adjustment_contrast = 1.06
+	e.adjustment_saturation = 1.06
 	env.environment = e
 	root.add_child(env)
 

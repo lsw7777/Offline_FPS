@@ -34,3 +34,6 @@
 - 出生点要防"生在墙里"：集成测试有 `_spawn_clear()` 做 0.7×1.8×0.7 AABB 重叠检查；**旋转斜坡**用 AABB 近似会误判，出生点别贴着斜坡。
 - **新增 `class_name` 的脚本后必须跑一次 `--import`**，否则其他脚本报 `Identifier "X" not declared`（global_script_class_cache 未更新）。
 - 贴花（弹孔/刀痕）：`QuadMesh` + `StandardMaterial3D`(unshaded+alpha+albedo_texture)，`Basis(x,y,n)` 让 +Z 对齐法线、沿法线偏移 0.012；挂到命中的 `StaticBody3D` 下随地图释放，并做数量上限（140）回收。
+- 真实感走**运行时 PBR**（`wb_tex.gd` / `WBTex`）：64×64 的 albedo+roughness+normal（法线由高度场环绕 sobel 生成），`pbr_for(col)` 按颜色自动归类 metal/steel/wood/polymer；重建模型后遍历子节点批量替换材质，不用改构建代码。
+- 环境光效在 `map_builder._env()`：`ssao_enabled/ssr_enabled/glow_enabled/tonemap_mode=ACES`；相机下挂一盏 `OmniLight3D` 做武器补光（暗图也能看清枪）。
+- 检视动画（中键）用多轴旋转 + 拉近 + 缩放 + 专属 `OmniLight3D`；每帧开头 `scale=ONE`、灯光 `move_toward→0` 防状态残留。
