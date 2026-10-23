@@ -1,0 +1,93 @@
+{
+  "schema": "wb.melee/1",
+  "note": "近战是节奏控制器而非备用武器：省弹药 / 处决 / 格挡。共用体力条 100 点，1.2s 回满。",
+  "shared": {
+    "stamina_max": 100,
+    "stamina_regen_full_s": 1.2,
+    "execute_invincible_frames_s": 0.6,
+    "execute_cancelable": false
+  },
+  "items": [
+    {
+      "id": "M9_Bayonet",
+      "display_name_zh": "M9 刺刀",
+      "role": "stealth_execution",
+      "damage_light": 55,
+      "execute_multiplier": 4.0,
+      "interval_s": 0.55,
+      "range_m": 1.6,
+      "stamina_cost": 10,
+      "backstab": {
+        "cone_deg": 120,
+        "range_m": 1.6,
+        "requires_unalerted": true,
+        "silent": true,
+        "ignore_remaining_hp": true
+      },
+      "ammo_refund_per_execute": 2,
+      "acquire": {
+        "chapter": 0,
+        "method": "Default",
+        "guaranteed": true,
+        "note": "序章默认携带"
+      }
+    },
+    {
+      "id": "KA-BAR",
+      "display_name_zh": "KA-BAR 卡巴战斗刀",
+      "role": "front_parry",
+      "damage_light": 45,
+      "execute_multiplier": 1.0,
+      "interval_s": 0.4,
+      "range_m": 1.4,
+      "stamina_cost": 25,
+      "parry": {
+        "perfect_window_s": 0.25,
+        "deflect_bullet": true,
+        "disarm_melee": true,
+        "stagger_target_s": 1.2
+      },
+      "specials": [
+        "perfect_parry",
+        "bullet_deflect"
+      ],
+      "acquire": {
+        "chapter": 2,
+        "method": "EliteDrop",
+        "guaranteed": true,
+        "note": "近战精英必掉"
+      }
+    },
+    {
+      "id": "Balisong",
+      "display_name_zh": "蝴蝶刀 Balisong",
+      "role": "mobility",
+      "damage_light": 30,
+      "execute_multiplier": 1.0,
+      "interval_s": 0.25,
+      "range_m": 1.2,
+      "stamina_cost": 8,
+      "combo": {
+        "hits": 3
+      },
+      "on_kill": {
+        "speed_bonus_pct": 20,
+        "duration_s": 1.5,
+        "cancel_fire_recovery": true
+      },
+      "air": {
+        "reset_double_jump_on_hit": true
+      },
+      "specials": [
+        "recovery_cancel",
+        "air_hit_reset_jump"
+      ],
+      "acquire": {
+        "chapter": 3,
+        "method": "HiddenCache",
+        "guaranteed": false,
+        "note": "音频解谜，3 条日志线索"
+      }
+    }
+  ]
+}

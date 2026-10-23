@@ -1,0 +1,32 @@
+{
+  "schema": "wb.loadout/1",
+  "slots": {
+    "primary": 2,
+    "secondary": 1,
+    "melee": 1,
+    "throwable": { "types": 2, "counts": { "FragGrenade": 2, "NoiseDecoy": 1 } }
+  },
+  "primary_rule": "两把主武器必须落在不同的 distance_band（near<25m / mid 25-80m / far>80m），三选二",
+  "melee_rule": "全程不可丢弃",
+  "weight": {
+    "max": 12,
+    "move_speed_mult": "1.0 - 0.020 * TotalWeight",
+    "swap_time_mult": "1.0 + 0.030 * TotalWeight"
+  },
+  "swap_time_s": {
+    "to_primary": 0.55,
+    "to_secondary": 0.35,
+    "to_melee": 0.25,
+    "back_to_gun": 0.45
+  },
+  "cancel_rule": "换枪动画可被近战 windup 取消，不可被射击取消（防连点宏）",
+  "per_weapon_weight": {
+    "Desert_Eagle": 3,
+    "MP5": 3,
+    "AK-47": 4,
+    "Remington_M870": 4,
+    "AWM": 5,
+    "M249_SAW": 7,
+    "melee": 0.5
+  }
+}

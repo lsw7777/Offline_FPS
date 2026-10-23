@@ -1,0 +1,25 @@
+; Engine configuration file.
+; Project WB — White Noise: Rimebelt (single-player FPS, Godot port)
+; Data single source of truth: res://ProjectWB/Config/Data/*.json (see Tools/validate_data.py)
+
+config_version=5
+
+[application]
+
+config/name="Project WB - White Noise: Rimebelt"
+run/main_scene="res://Godot/scenes/main.tscn"
+config/features=PackedStringArray("4.7")
+
+[autoload]
+
+InputSetup="*res://Godot/scripts/input_setup.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+renderer/rendering_method.mobile="gl_compatibility"

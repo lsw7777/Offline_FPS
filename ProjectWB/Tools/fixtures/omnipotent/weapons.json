@@ -1,0 +1,261 @@
+{
+  "schema": "wb.weapon/1",
+  "note": "唯一数值来源。任何代码禁止硬编码伤害/射速/后坐（见 R3）。修改本文件后必须跑 Tools/validate_data.py --strict。",
+  "defaults": {
+    "target_half_width_m": 0.5,
+    "stance_ads_base_spread_deg": 0.1,
+    "armor_dr": {
+      "0": 0.0,
+      "1": 0.15,
+      "2": 0.3,
+      "3": 0.45
+    },
+    "first_shot_lethality_bonus": 1.6,
+    "moving_target_slow_fire_rpm_threshold": 120,
+    "moving_target_slow_fire_penalty": 0.45,
+    "suppressor_score_bonus": 1.6,
+    "unsuppressed_stealth_score": 0.35
+  },
+  "items": [
+    {
+      "id": "Desert_Eagle",
+      "class": "HeavyPistol",
+      "display_name_zh": "沙漠之鹰",
+      "ammo": ".50 AE",
+      "damage": [
+        65,
+        80
+      ],
+      "pellets": 1,
+      "rpm": 300,
+      "semi_auto_cap_rpm": 300,
+      "handling_time_s": 0.35,
+      "magazine": 7,
+      "reload_tactical_s": 1.9,
+      "recoil_v_deg": 4.0,
+      "recoil_h_deg": 0.35,
+      "recoil_recover_deg_per_s": 9.0,
+      "spread_mult": 0.5,
+      "effective_range_m": 50,
+      "penetration": 3,
+      "suppressor_support": false,
+      "noise_radius_m": 22,
+      "weight": 3,
+      "distance_band": "near",
+      "ammo_cap_global": 56,
+      "supply": "scavenge",
+      "acquire": {
+        "chapter": 1,
+        "method": "SafeBox",
+        "guaranteed": false,
+        "note": "密码来自第 1 章 3 条录音日志"
+      },
+      "feedback_tags": [
+        "cannon_like_report",
+        "heavy_muzzle_flip",
+        "brass_eject_high"
+      ],
+      "area_suppression": 0.0
+    },
+    {
+      "id": "MP5",
+      "class": "SMG",
+      "display_name_zh": "MP5",
+      "ammo": "9x19mm",
+      "damage": [
+        60,
+        70
+      ],
+      "pellets": 1,
+      "rpm": 900,
+      "semi_auto_cap_rpm": null,
+      "handling_time_s": 0.1,
+      "magazine": 60,
+      "reload_tactical_s": 2.1,
+      "recoil_v_deg": 0.6,
+      "recoil_h_deg": 0.25,
+      "recoil_recover_deg_per_s": 9.0,
+      "spread_mult": 1.0,
+      "effective_range_m": 300,
+      "penetration": 3,
+      "suppressor_support": true,
+      "noise_radius_m": 8,
+      "weight": 3,
+      "distance_band": "near",
+      "ammo_cap_global": 240,
+      "supply": "scavenge",
+      "acquire": {
+        "chapter": 1,
+        "method": "WeaponCrate",
+        "guaranteed": true,
+        "note": "哨站仓库"
+      },
+      "feedback_tags": [
+        "integral_suppressor_sd",
+        "flat_recoil_pulse",
+        "spent_case_rain"
+      ],
+      "area_suppression": 0.3
+    },
+    {
+      "id": "AK-47",
+      "class": "AssaultRifle",
+      "display_name_zh": "AK-47",
+      "ammo": "7.62x39mm",
+      "damage": [
+        38,
+        45
+      ],
+      "pellets": 1,
+      "rpm": 600,
+      "semi_auto_cap_rpm": null,
+      "handling_time_s": 0.25,
+      "magazine": 30,
+      "reload_tactical_s": 2.3,
+      "recoil_v_deg": 1.8,
+      "recoil_h_deg": 0.35,
+      "recoil_recover_deg_per_s": 9.0,
+      "spread_mult": 0.8,
+      "effective_range_m": 90,
+      "penetration": 2,
+      "suppressor_support": false,
+      "noise_radius_m": 30,
+      "weight": 4,
+      "distance_band": "mid",
+      "ammo_cap_global": 210,
+      "supply": "scavenge",
+      "acquire": {
+        "chapter": 2,
+        "method": "EliteDrop",
+        "guaranteed": true
+      },
+      "feedback_tags": [
+        "metal_clang",
+        "heavy_stock_recoil",
+        "shell_eject_45deg"
+      ],
+      "area_suppression": 0.4
+    },
+    {
+      "id": "Remington_M870",
+      "class": "PumpShotgun",
+      "display_name_zh": "雷明顿 M870",
+      "ammo": "12 Gauge",
+      "damage": [
+        11,
+        13
+      ],
+      "pellets": 9,
+      "pellet_cone_half_deg": 2.0,
+      "rpm": 45,
+      "semi_auto_cap_rpm": null,
+      "handling_time_s": 0.25,
+      "magazine": 6,
+      "reload_tactical_s": 2.7,
+      "recoil_v_deg": 3.2,
+      "recoil_h_deg": 0.4,
+      "recoil_recover_deg_per_s": 9.0,
+      "spread_mult": 1.6,
+      "effective_range_m": 18,
+      "penetration": 2,
+      "suppressor_support": false,
+      "noise_radius_m": 30,
+      "weight": 4,
+      "distance_band": "near",
+      "ammo_cap_global": 48,
+      "supply": "scavenge",
+      "acquire": {
+        "chapter": 1,
+        "method": "LockedLocker",
+        "guaranteed": true,
+        "note": "需撬棍"
+      },
+      "feedback_tags": [
+        "pump_action_clack",
+        "target_pushback_0.3m",
+        "hull_eject_slow"
+      ],
+      "area_suppression": 0.1
+    },
+    {
+      "id": "AWM",
+      "class": "BoltSniper",
+      "display_name_zh": "AWM",
+      "ammo": ".338 Lapua",
+      "damage": [
+        130,
+        150
+      ],
+      "pellets": 1,
+      "rpm": 50,
+      "semi_auto_cap_rpm": null,
+      "handling_time_s": 0.9,
+      "magazine": 5,
+      "reload_tactical_s": 3.0,
+      "recoil_v_deg": 4.0,
+      "recoil_h_deg": 0.35,
+      "recoil_recover_deg_per_s": 9.0,
+      "spread_mult": 2.0,
+      "effective_range_m": 300,
+      "penetration": 3,
+      "suppressor_support": false,
+      "noise_radius_m": 35,
+      "weight": 5,
+      "distance_band": "far",
+      "ammo_cap_global": 40,
+      "supply": "checkpoint_only",
+      "acquire": {
+        "chapter": 3,
+        "method": "EnemyDrop",
+        "guaranteed": true,
+        "note": "击杀敌方狙击手"
+      },
+      "feedback_tags": [
+        "bolt_cycle_heavy",
+        "supersonic_crack",
+        "scope_shadow_punch"
+      ],
+      "area_suppression": 0.0
+    },
+    {
+      "id": "M249_SAW",
+      "class": "SquadAutomaticWeapon",
+      "display_name_zh": "M249 SAW",
+      "ammo": "5.56x45mm",
+      "damage": [
+        42,
+        50
+      ],
+      "pellets": 1,
+      "rpm": 550,
+      "semi_auto_cap_rpm": null,
+      "handling_time_s": 0.6,
+      "magazine": 100,
+      "reload_tactical_s": 6.5,
+      "recoil_v_deg": 2.2,
+      "recoil_h_deg": 0.3,
+      "recoil_recover_deg_per_s": 9.0,
+      "spread_mult": 2.6,
+      "effective_range_m": 120,
+      "penetration": 2,
+      "suppressor_support": false,
+      "noise_radius_m": 30,
+      "weight": 7,
+      "distance_band": "mid",
+      "ammo_cap_global": 300,
+      "supply": "checkpoint_only",
+      "acquire": {
+        "chapter": 4,
+        "method": "ArmoryCrate",
+        "guaranteed": true,
+        "note": "据点防御战"
+      },
+      "feedback_tags": [
+        "belt_feed_rattle",
+        "sustained_roar",
+        "tracer_every_5th"
+      ],
+      "area_suppression": 1.0
+    }
+  ]
+}

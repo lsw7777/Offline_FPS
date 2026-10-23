@@ -1,0 +1,9 @@
+{
+  "schema": "wb.level_rules/1",
+  "combat_beat": { "fight_s": [90, 120], "low_pressure_s": [20, 40], "loop": "交替进行，禁止连续两场无喘息战斗" },
+  "space": { "vertical_layers_min": 2, "attack_paths_min": 3, "paths_must_include": ["frontal", "flank", "high_or_vent"] },
+  "ammo_economy": { "enemy_drop_ratio": 0.7, "checkpoint_refill_pct": 100 },
+  "guidance": { "unique_light_source_is_route": true, "no_pure_corridor": true, "must_have_resource_choice_point": true },
+  "checkpoint": { "autosave_interval_min": [8, 12], "force_manual_before_boss": true },
+  "per_level_budget": { "unique_assets_max": 15, "simultaneous_enemies_max": 12, "audio_logs_per_chapter": [8, 12] }
+}

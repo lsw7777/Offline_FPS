@@ -1,0 +1,95 @@
+{
+  "schema": "wb.scenes/1",
+  "note": "克制矩阵的机器化定义。metric=alpha 用首次击杀时间；duel 用 1v1 TTK；clear 用清群时间；stealth 用潜行评分。expected_best 是设计意图的黄金值，改武器导致它变化时必须先在 DECISIONS.md 记录理由。",
+  "scenes": [
+    {
+      "id": "Indoor_Breach_0_8m",
+      "distance_m": 7,
+      "targets": 3,
+      "armor_level": 0,
+      "target_moving": false,
+      "metric": "alpha",
+      "expected_best": "AK-47"
+    },
+    {
+      "id": "Street_8_30m",
+      "distance_m": 20,
+      "targets": 3,
+      "armor_level": 2,
+      "target_moving": true,
+      "metric": "duel",
+      "expected_best": "MP5"
+    },
+    {
+      "id": "Open_Snowfield_30_80m",
+      "distance_m": 55,
+      "targets": 2,
+      "armor_level": 2,
+      "target_moving": true,
+      "metric": "duel",
+      "expected_best": "AK-47"
+    },
+    {
+      "id": "LongRange_80m_plus",
+      "distance_m": 100,
+      "targets": 1,
+      "armor_level": 1,
+      "target_moving": false,
+      "metric": "duel",
+      "expected_best": "AWM"
+    },
+    {
+      "id": "HeavyArmor_3",
+      "distance_m": 12,
+      "targets": 1,
+      "armor_level": 3,
+      "target_moving": false,
+      "metric": "duel",
+      "expected_best": "Desert_Eagle",
+      "requires_penetration": 3,
+      "underpen_damage_mult": 0.4
+    },
+    {
+      "id": "Group_Suppression_5p",
+      "distance_m": 15,
+      "targets": 12,
+      "armor_level": 1,
+      "target_moving": true,
+      "metric": "clear",
+      "expected_best": "M249_SAW"
+    },
+    {
+      "id": "Stealth_Assassination",
+      "distance_m": 8,
+      "targets": 1,
+      "armor_level": 0,
+      "target_moving": false,
+      "metric": "stealth",
+      "expected_best": "MP5"
+    }
+  ],
+  "balance_rules": {
+    "require_unique_winner": true,
+    "winner_margin_pct": 2.0,
+    "every_weapon_must_win_one_scene": true,
+    "max_scenes_dominated_per_weapon": 2,
+    "dominance_relative_threshold": 0.75,
+    "min_win_count_per_weapon": 1,
+    "ttk_ladder": {
+      "breach_max_s": 0.6,
+      "general_min_s": 0.7,
+      "general_max_s": 1.0,
+      "precision_miss_penalty_min_s": 1.2
+    },
+    "ammo_scarcity": {
+      "AWM": {
+        "ammo_cap_global_max": 40,
+        "supply": "checkpoint_only"
+      },
+      "M249_SAW": {
+        "supply": "checkpoint_only"
+      }
+    },
+    "min_unique_feedback_tags": 2
+  }
+}
