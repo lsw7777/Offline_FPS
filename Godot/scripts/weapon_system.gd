@@ -60,6 +60,10 @@ func _process(delta: float) -> void:
 		if Input.is_action_just_pressed("reload"):
 			begin_reload()
 
+		if Input.is_action_just_pressed("inspect"):
+			if weapon_model and weapon_model.has_method("play_inspect"):
+				weapon_model.play_inspect()
+
 		if Input.is_action_pressed("fire"):
 			fire()
 
@@ -73,6 +77,8 @@ func equip(id: String) -> void:
 	cooldown = 0.0
 	if weapon_model and weapon_model.has_method("build"):
 		weapon_model.build(weapons[id])
+		if weapon_model.has_method("play_switch"):
+			weapon_model.play_switch()
 	weapon_changed.emit(id, weapons[id]["display_name_zh"])
 	ammo_changed.emit(id, ammo_in_mag, int(weapons[id]["magazine"]))
 
@@ -84,6 +90,15 @@ func begin_reload() -> void:
 		return
 	reloading = true
 	reload_t = float(weapons[current]["reload_tactical_s"])
+	# reloading forces out of ADS
+	if aiming:
+		aiming = false
+		if weapon_model and weapon_model.has_method("set_aiming"):
+			weapon_model.set_aiming(false)
+		if player:
+			player.set("aiming", false)
+	if weapon_model and weapon_model.has_method("play_reload"):
+		weapon_model.play_reload(reload_t)
 
 
 ## Refill the current weapon to a full magazine (used when switching maps).
@@ -110,6 +125,8 @@ func on_mode_changed(is_melee: bool) -> void:
 		aiming = false
 	if weapon_model and weapon_model.has_method("set_active"):
 		weapon_model.set_active(not is_melee)
+	if not is_melee and weapon_model and weapon_model.has_method("play_switch"):
+		weapon_model.play_switch()
 
 
 func fire() -> void:
@@ -154,6 +171,8 @@ func fire() -> void:
 		if collider and collider.has_method("take_damage"):
 			collider.take_damage(_damage(w))
 			hit.emit(false)
+		# leave a bullet hole on walls / props
+		WBDecal.spawn(collider, res["position"], res["normal"], false)
 
 	# muzzle flash + tracer + ejected casing
 	if weapon_model and weapon_model.has_method("flash"):

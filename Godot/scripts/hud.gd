@@ -64,7 +64,7 @@ func _ready() -> void:
 	hint = _mk_label(Vector2(0, maxf(0.0, _vp.y - 46.0)), "", 15)
 	hint.size = Vector2(_vp.x, 24)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.text = "WASD 移动 · 左键 射击/挥刀 · 右键 瞄准(切换) · R 换弹 · 1-6 切枪 / 1-3 切刀 · V 切换近战/远程 · Esc→设置"
+	hint.text = "WASD 移动 · 左键 射击/挥刀 · 右键 瞄准 · R 换弹 · 1-6 切枪 / 1-3 切刀 · V 近战 · 中键 检视 · Esc→设置"
 
 	settings_button = Button.new()
 	settings_button.text = "设置"
@@ -175,13 +175,14 @@ func _build_settings_panel() -> void:
 		{"id": "sand_city", "name": "炽热沙城"},
 		{"id": "transport_ship", "name": "运输船"},
 		{"id": "maze", "name": "迷宫"},
+		{"id": "range", "name": "靶场"},
 	]
 	for i in range(maps.size()):
 		var b := Button.new()
 		b.text = maps[i]["name"]
-		b.position = Vector2(20 + i * 115, 140)
-		b.size = Vector2(105, 38)
-		b.add_theme_font_size_override("font_size", 15)
+		b.position = Vector2(20 + i * 88, 140)
+		b.size = Vector2(82, 38)
+		b.add_theme_font_size_override("font_size", 14)
 		var mid: String = maps[i]["id"]
 		b.pressed.connect(func(): _on_map_selected(mid))
 		settings_panel.add_child(b)

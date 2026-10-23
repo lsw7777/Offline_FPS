@@ -155,6 +155,71 @@ func _ready() -> void:
 		ok = false
 		print("FAIL: no shell casing ejected on fire")
 
+	# weapon reload / switch animations
+	if wm:
+		ws.equip("AK-47")
+		if wm._anim != "switch":
+			ok = false
+			print("FAIL: switch animation not triggered on equip")
+		ws.fire()
+		ws.begin_reload()
+		if wm._anim != "reload":
+			ok = false
+			print("FAIL: reload animation not triggered")
+		if absf(wm._anim_dur - 1.5) > 0.01:
+			ok = false
+			print("FAIL: AK reload duration not updated (%.2f)" % wm._anim_dur)
+		ws.reloading = false
+		# inspect (middle mouse) animation
+		wm._anim = ""
+		wm.play_inspect()
+		if wm._anim != "inspect":
+			ok = false
+			print("FAIL: gun inspect animation not triggered")
+
+	# range map: no enemies, has targets
+	var rinfo: Dictionary = WBMapBuilder.build("range")
+	var rtargets: Array = rinfo.get("targets", [])
+	if rtargets.size() < 3:
+		ok = false
+		print("FAIL: range map has too few targets (%d)" % rtargets.size())
+	if rinfo["enemy_spawns"].size() != 0:
+		ok = false
+		print("FAIL: range map should have no enemies")
+	rinfo["root"].free()
+
+	# bullet holes / knife marks attach to the hit static body
+	var floor_body = main.map_root.get_node_or_null("Floor") if main.map_root else null
+	if floor_body:
+		var before: int = floor_body.get_child_count()
+		WBDecal.spawn(floor_body, Vector3(0, 0, 0), Vector3.UP, false)
+		WBDecal.spawn(floor_body, Vector3(0, 0, 0), Vector3.UP, true)
+		if floor_body.get_child_count() < before + 2:
+			ok = false
+			print("FAIL: bullet hole / knife mark not spawned")
+	else:
+		ok = false
+		print("FAIL: map floor body not found for decal test")
+
+	# all maps must build with substantial geometry
+	for mid in ["sand_city", "transport_ship", "maze", "range"]:
+		var info: Dictionary = WBMapBuilder.build(mid)
+		var mroot: Node3D = info["root"]
+		var n: int = mroot.get_child_count()
+		print("map %s children=%d" % [mid, n])
+		if n < 12:
+			ok = false
+			print("FAIL: map %s too simple (%d children)" % [mid, n])
+		# spawn points must not be inside geometry
+		var spawn_list := [info["player_spawn"]]
+		for s in info["enemy_spawns"]:
+			spawn_list.append(s)
+		for sp in spawn_list:
+			if not _spawn_clear(mroot, sp):
+				ok = false
+				print("FAIL: %s spawn blocked at %s" % [mid, str(sp)])
+		mroot.free()
+
 	# V toggles melee mode; knife viewmodel shows; 1/2/3 switch knives
 	var ms = main.get_node_or_null("Player/MeleeSystem")
 	var mm = main.get_node_or_null("Player/Camera3D/MeleeModel")
@@ -177,6 +242,10 @@ func _ready() -> void:
 		if ms.current_melee_id != "KA-BAR":
 			ok = false
 			print("FAIL: knife switch to KA-BAR failed")
+		mm.play_inspect()
+		if mm._inspect_t <= 0.0:
+			ok = false
+			print("FAIL: knife inspect animation not triggered")
 		# gun must be hidden and firing blocked while in melee mode
 		var gun = wm.get_node_or_null("Gun") if wm else null
 		if gun and gun.visible:
@@ -222,3 +291,27 @@ func _ready() -> void:
 
 	print("INTEGRATION %s" % ("PASS" if ok else "FAIL"))
 	get_tree().quit(0 if ok else 1)
+
+
+## Axis-aligned approximation: is a 0.7 x 1.8 x 0.7 body clear at `p`?
+func _spawn_clear(root: Node3D, p: Vector3) -> bool:
+	var lo := p + Vector3(-0.35, 0.15, -0.35)
+	var hi := p + Vector3(0.35, 1.75, 0.35)
+	for c in root.get_children():
+		if not (c is StaticBody3D):
+			continue
+		var box_size := Vector3.ZERO
+		var found := false
+		for m in c.get_children():
+			if m is MeshInstance3D and m.mesh is BoxMesh:
+				box_size = m.mesh.size
+				found = true
+				break
+		if not found:
+			continue
+		var center: Vector3 = c.position
+		var mn := center - box_size * 0.5
+		var mx := center + box_size * 0.5
+		if lo.x < mx.x and hi.x > mn.x and lo.y < mx.y and hi.y > mn.y and lo.z < mx.z and hi.z > mn.z:
+			return false
+	return true

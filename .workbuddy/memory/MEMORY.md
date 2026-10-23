@@ -29,3 +29,8 @@
 - **全屏 HUD 根 Control 必须 `mouse_filter = MOUSE_FILTER_IGNORE`**：默认 STOP + 全屏 size 会吞掉所有鼠标事件 → 视角转不动、点击不开火。子控件仍被独立命中，设置按钮照常可点。
 - 第一人称视角旋转用 **`_input(event)` 而非 `_unhandled_input`**：`_input` 在 GUI 之前，全屏控件吞不掉；再用 `Input.mouse_mode == MOUSE_MODE_CAPTURED` 作门槛。
 - **无头测试盲区**：无头没有光标，`gui_get_hovered_control()` 恒 null、`Input.mouse_mode` 恒 0（设不成 CAPTURED）→ 光标/命中相关 bug 必须用**真实窗口**跑一次集成测试（不加 `--headless`）。
+- 地图全部代码生成在 `Godot/scripts/map_builder.gd`：`_wall_line(axis,fixed,start,end,gaps,...)` 做带门洞分段墙、`_stack()` 堆箱、`_box(...,rot)` 做斜坡；改地图只动这一个文件。
+- 换弹/切枪动画在 `weapon_model.gd`：`_anim` 状态机（reload/switch）+ 按 `_class` 分支不同曲线；`play_reload(reload_s)` 绑 `begin_reload`，`play_switch()` 绑 `equip`。霰弹枪不丢弹匣。
+- 出生点要防"生在墙里"：集成测试有 `_spawn_clear()` 做 0.7×1.8×0.7 AABB 重叠检查；**旋转斜坡**用 AABB 近似会误判，出生点别贴着斜坡。
+- **新增 `class_name` 的脚本后必须跑一次 `--import`**，否则其他脚本报 `Identifier "X" not declared`（global_script_class_cache 未更新）。
+- 贴花（弹孔/刀痕）：`QuadMesh` + `StandardMaterial3D`(unshaded+alpha+albedo_texture)，`Basis(x,y,n)` 让 +Z 对齐法线、沿法线偏移 0.012；挂到命中的 `StaticBody3D` 下随地图释放，并做数量上限（140）回收。

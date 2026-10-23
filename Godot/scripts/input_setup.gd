@@ -17,6 +17,7 @@ func _ready() -> void:
 
 	_add_mouse("fire", MOUSE_BUTTON_LEFT)
 	_add_mouse("aim", MOUSE_BUTTON_RIGHT)
+	_add_mouse("inspect", MOUSE_BUTTON_MIDDLE)
 
 
 func _add_key(action: String, keycode: int) -> void:

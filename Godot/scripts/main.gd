@@ -52,7 +52,17 @@ func _load_map(id: String) -> void:
 
 	_set_ui_blocked(false)
 	_spawn_enemies(info["enemy_spawns"])
+	for pos in info.get("targets", []):
+		_spawn_range_target(pos)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _spawn_range_target(pos: Vector3) -> void:
+	var t := StaticBody3D.new()
+	t.name = "RangeTarget"
+	t.position = pos
+	t.set_script(load("res://Godot/scripts/range_target.gd"))
+	add_child(t)
 
 
 func _set_ui_blocked(b: bool) -> void:

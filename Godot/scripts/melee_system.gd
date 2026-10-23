@@ -32,6 +32,8 @@ func equip(id: String) -> void:
 	cooldown = 0.0
 	if melee_model and melee_model.has_method("build"):
 		melee_model.build(melee[id])
+		if melee_model.has_method("play_switch"):
+			melee_model.play_switch()
 	melee_changed.emit(id, melee[id]["display_name_zh"])
 
 
@@ -39,6 +41,8 @@ func on_mode_changed(is_melee: bool) -> void:
 	melee_mode = is_melee
 	if melee_model and melee_model.has_method("set_active"):
 		melee_model.set_active(is_melee)
+	if is_melee and melee_model and melee_model.has_method("play_switch"):
+		melee_model.play_switch()
 
 
 func _process(delta: float) -> void:
@@ -50,6 +54,10 @@ func _process(delta: float) -> void:
 	for i in range(mini(order.size(), 3)):
 		if Input.is_action_just_pressed("weapon_%d" % (i + 1)):
 			equip(order[i])
+
+	if Input.is_action_just_pressed("inspect"):
+		if melee_model and melee_model.has_method("play_inspect"):
+			melee_model.play_inspect()
 
 	if not ui_blocked and Input.is_action_just_pressed("fire"):
 		attack()
@@ -77,3 +85,5 @@ func attack() -> void:
 		if collider and collider.has_method("take_damage"):
 			collider.take_damage(float(m["damage_light"]))
 			melee_hit.emit(current_melee_id)
+		# knife mark on walls / props
+		WBDecal.spawn(collider, res["position"], res["normal"], true)

@@ -17,6 +17,10 @@ var _ads_pos := Vector3(0.0, -0.075, -0.40)
 var _t := 0.0
 var aiming := false
 var _aim_t := 0.0
+var _class := ""
+var _anim := ""
+var _anim_t := 0.0
+var _anim_dur := 1.0
 
 
 func _ready() -> void:
@@ -58,7 +62,119 @@ func _process(delta: float) -> void:
 	var target := _base_pos.lerp(_ads_pos, _aim_t)
 	target.y += sin(_t * 10.0) * amp
 	target.x += sin(_t * 5.0) * amp * 0.5
-	_gun_root.position = target
+
+	# ---- reload / switch pose overlay ----
+	var off := Vector3.ZERO
+	var rot := Vector3.ZERO
+	if _anim != "":
+		_anim_t -= delta
+		var p: float = 1.0 - clampf(_anim_t / maxf(_anim_dur, 0.01), 0.0, 1.0)
+		var k: float = sin(p * PI)
+		if _anim == "reload":
+			match _class:
+				"PumpShotgun":
+					# pump the slide back and forth
+					off.y -= 0.13 * k
+					off.z += 0.02 * sin(p * PI * 6.0)
+					rot.x += 14.0 * k
+				"BoltSniper":
+					off.y -= 0.15 * k
+					rot.x += 22.0 * k
+					rot.z += 32.0 * k
+				"SquadAutomaticWeapon":
+					off.y -= 0.24 * k
+					off.z += 0.06 * k
+					rot.x += 26.0 * k
+					rot.z += 20.0 * k
+				"HeavyPistol":
+					off.y -= 0.12 * k
+					rot.z += 42.0 * k
+					rot.x += 16.0 * k
+				_:
+					off.y -= 0.16 * k
+					off.z += 0.05 * k
+					rot.x += 25.0 * k
+					rot.z += 22.0 * k
+		elif _anim == "switch":
+			off.y -= 0.34 * k
+			off.z += 0.10 * k
+			rot.x += 38.0 * k
+		elif _anim == "inspect":
+			off.y += 0.03 * k
+			rot.y += 58.0 * k
+			rot.z += 18.0 * k
+		if _anim_t <= 0.0:
+			_anim = ""
+
+	_gun_root.position = target + off
+	_gun_root.rotation_degrees = rot
+
+
+func _switch_duration(cls: String) -> float:
+	match cls:
+		"HeavyPistol":
+			return 0.34
+		"SMG":
+			return 0.44
+		"PumpShotgun":
+			return 0.58
+		"BoltSniper":
+			return 0.70
+		"SquadAutomaticWeapon":
+			return 0.80
+		_:
+			return 0.50
+
+
+## Play the reload animation; duration normally equals reload_tactical_s.
+func play_reload(dur: float) -> void:
+	_anim = "reload"
+	_anim_dur = maxf(dur, 0.2)
+	_anim_t = _anim_dur
+	_drop_mag()
+
+
+## Play the weapon-raise animation when a gun is equipped / drawn.
+func play_switch() -> void:
+	_anim = "switch"
+	_anim_dur = _switch_duration(_class)
+	_anim_t = _anim_dur
+
+
+## Inspect the weapon (middle mouse): turn it to show its side, then back.
+func play_inspect() -> void:
+	if _anim == "reload":
+		return
+	_anim = "inspect"
+	_anim_dur = 1.4
+	_anim_t = _anim_dur
+
+
+func _drop_mag() -> void:
+	if _gun_root == null or _class == "PumpShotgun":
+		return
+	var cam := get_parent()
+	if cam == null:
+		return
+	var root: Node = cam.get_parent()
+	if root == null:
+		return
+	var world: Node = root.get_parent()
+	if world == null:
+		return
+	var mag := MeshInstance3D.new()
+	mag.set_script(load("res://Godot/scripts/shell.gd"))
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.05, 0.15, 0.07)
+	mag.mesh = bm
+	mag.material_override = WBPrim.mat(Color(0.14, 0.14, 0.16), Color(0, 0, 0), 1.0, 0.7, 0.4)
+	world.add_child(mag)
+	mag.global_position = _gun_root.to_global(Vector3(0.0, -0.16, 0.10))
+	var cam3d := cam as Camera3D
+	if cam3d:
+		var basis: Basis = cam3d.global_transform.basis
+		mag.set("vel", basis.y * -1.2 + basis.x * 0.4)
+	mag.set("spin", Vector3(randf_range(-6, 6), randf_range(-6, 6), randf_range(-6, 6)))
 
 
 ## Eject a brass casing from the right side of the receiver.
@@ -93,7 +209,8 @@ func eject_shell() -> void:
 
 func build(weapon: Dictionary) -> void:
 	_clear_gun()
-	var cls: String = weapon.get("class", "")
+	_class = weapon.get("class", "")
+	var cls: String = _class
 	_gun_root = Node3D.new()
 	_gun_root.name = "Gun"
 	_gun_root.position = _base_pos

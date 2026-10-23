@@ -9,6 +9,9 @@ const SKIN := Color(0.86, 0.70, 0.56)
 var _root: Node3D = null
 var _t := 0.0
 var _attack_t := 0.0
+var _switch_t := 0.0
+var _switch_dur := 0.30
+var _inspect_t := 0.0
 var _active := false
 
 
@@ -89,10 +92,35 @@ func play_attack() -> void:
 	_attack_t = 0.24
 
 
+func play_switch() -> void:
+	_switch_t = _switch_dur
+
+
+func play_inspect() -> void:
+	_inspect_t = 1.4
+
+
 func _process(delta: float) -> void:
 	if _root == null:
 		return
 	_t += delta
+
+	# inspect: slow spin to show the blade
+	if _inspect_t > 0.0:
+		_inspect_t -= delta
+		var it: float = 1.0 - clampf(_inspect_t / 1.4, 0.0, 1.0)
+		var ik: float = sin(it * PI)
+		_root.rotation_degrees = Vector3(8.0 + 10.0 * ik, -12.0 - 260.0 * ik, 0.0)
+		_root.position = Vector3(0.30, -0.30 + 0.02 * ik, -0.50)
+		return
+
+	# draw animation: knife flips in from the right
+	if _switch_t > 0.0:
+		_switch_t -= delta
+		var st: float = 1.0 - clampf(_switch_t / _switch_dur, 0.0, 1.0)
+		_root.rotation_degrees = Vector3(8.0 + sin(st * PI) * 30.0, -12.0 - (1.0 - st) * 150.0, 0.0)
+		_root.position = Vector3(0.30 + (1.0 - st) * 0.20, -0.30 - (1.0 - st) * 0.25, -0.50)
+		return
 
 	if _attack_t > 0.0:
 		_attack_t -= delta
