@@ -20,6 +20,7 @@ var reloading := false
 var reload_t := 0.0
 var aiming := false
 var ui_blocked := false
+var melee_mode := false
 
 @onready var camera: Camera3D = get_node("../Camera3D")
 @onready var player: CharacterBody3D = get_parent()
@@ -37,9 +38,12 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	cooldown = maxf(cooldown - delta, 0.0)
 
-	# aim-down-sights zoom
+	# aim-down-sights zoom (never zoom while melee)
+	var want_fov := FOV_HIP
+	if not melee_mode and aiming:
+		want_fov = FOV_ADS
 	if camera:
-		camera.fov = lerpf(camera.fov, FOV_ADS if aiming else FOV_HIP, delta * 10.0)
+		camera.fov = lerpf(camera.fov, want_fov, delta * 10.0)
 
 	if reloading:
 		reload_t -= delta
@@ -48,15 +52,16 @@ func _process(delta: float) -> void:
 			ammo_in_mag = int(weapons[current]["magazine"])
 			ammo_changed.emit(current, ammo_in_mag, int(weapons[current]["magazine"]))
 
-	for i in range(weapon_order.size()):
-		if Input.is_action_just_pressed("weapon_%d" % (i + 1)):
-			equip(weapon_order[i])
+	if not melee_mode:
+		for i in range(weapon_order.size()):
+			if Input.is_action_just_pressed("weapon_%d" % (i + 1)):
+				equip(weapon_order[i])
 
-	if Input.is_action_just_pressed("reload"):
-		begin_reload()
+		if Input.is_action_just_pressed("reload"):
+			begin_reload()
 
-	if Input.is_action_pressed("fire"):
-		fire()
+		if Input.is_action_pressed("fire"):
+			fire()
 
 
 func equip(id: String) -> void:
@@ -98,7 +103,19 @@ func on_aim_changed(a: bool) -> void:
 		weapon_model.set_aiming(a)
 
 
+## Called by the player when switching between ranged and melee.
+func on_mode_changed(is_melee: bool) -> void:
+	melee_mode = is_melee
+	if is_melee:
+		aiming = false
+	if weapon_model and weapon_model.has_method("set_active"):
+		weapon_model.set_active(not is_melee)
+
+
 func fire() -> void:
+	# guns do not fire in melee mode
+	if melee_mode:
+		return
 	# never shoot while the settings panel is open
 	if ui_blocked:
 		return

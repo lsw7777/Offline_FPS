@@ -155,6 +155,47 @@ func _ready() -> void:
 		ok = false
 		print("FAIL: no shell casing ejected on fire")
 
+	# V toggles melee mode; knife viewmodel shows; 1/2/3 switch knives
+	var ms = main.get_node_or_null("Player/MeleeSystem")
+	var mm = main.get_node_or_null("Player/Camera3D/MeleeModel")
+	if pl and ms:
+		pl._toggle_mode()
+		await get_tree().process_frame
+		if not pl.melee_mode:
+			ok = false
+			print("FAIL: V did not enter melee mode")
+		if not ms.melee_mode:
+			ok = false
+			print("FAIL: melee system did not receive melee mode")
+		if mm == null or not mm.visible:
+			ok = false
+			print("FAIL: melee viewmodel not visible in melee mode")
+		elif mm.get_child_count() == 0:
+			ok = false
+			print("FAIL: knife model not built")
+		ms.equip("KA-BAR")
+		if ms.current_melee_id != "KA-BAR":
+			ok = false
+			print("FAIL: knife switch to KA-BAR failed")
+		# gun must be hidden and firing blocked while in melee mode
+		var gun = wm.get_node_or_null("Gun") if wm else null
+		if gun and gun.visible:
+			ok = false
+			print("FAIL: gun still visible in melee mode")
+		var ammo_before: int = ws.ammo_in_mag
+		ws.fire()
+		if ws.ammo_in_mag != ammo_before:
+			ok = false
+			print("FAIL: gun fired while in melee mode")
+		pl._toggle_mode()
+		await get_tree().process_frame
+		if pl.melee_mode:
+			ok = false
+			print("FAIL: V did not return to ranged mode")
+		if mm and mm.visible:
+			ok = false
+			print("FAIL: melee viewmodel still visible in ranged mode")
+
 	# mouse look must rotate the view (only assertable if capture works headless)
 	if pl:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -167,6 +208,17 @@ func _ready() -> void:
 		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and absf(pl.yaw - yaw0) < 0.001:
 			ok = false
 			print("FAIL: mouse look did not rotate the view")
+
+	# clearing every enemy must open the results screen
+	if hud:
+		for e in get_tree().get_nodes_in_group("enemy"):
+			if is_instance_valid(e):
+				e.take_damage(999.0)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		if not hud.results_panel.visible:
+			ok = false
+			print("FAIL: results screen not shown after clearing all enemies")
 
 	print("INTEGRATION %s" % ("PASS" if ok else "FAIL"))
 	get_tree().quit(0 if ok else 1)

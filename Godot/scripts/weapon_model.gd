@@ -31,6 +31,14 @@ func set_aiming(a: bool) -> void:
 	aiming = a
 
 
+## Show/hide the gun (hidden while in melee mode).
+func set_active(a: bool) -> void:
+	aiming = false
+	_aim_t = 0.0
+	if _gun_root:
+		_gun_root.visible = a
+
+
 func _process(delta: float) -> void:
 	if _gun_root == null:
 		return

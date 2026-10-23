@@ -15,6 +15,7 @@ signal damaged
 signal died
 signal fell
 signal aim_changed(aiming: bool)
+signal mode_changed(melee: bool)
 
 const FALL_Y := -12.0
 
@@ -22,6 +23,7 @@ const FALL_Y := -12.0
 
 var hp := 100.0
 var aiming := false
+var melee_mode := false
 var mouse_pitch := 0.0
 var yaw := 0.0
 var recoil_pitch_deg := 0.0
@@ -56,6 +58,8 @@ func respawn(pos: Vector3) -> void:
 	_shake = 0.0
 	aiming = false
 	aim_changed.emit(false)
+	melee_mode = false
+	mode_changed.emit(false)
 	health_changed.emit(hp)
 
 
@@ -73,6 +77,10 @@ func _input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# V toggles melee / ranged mode
+	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and Input.is_action_just_pressed("melee"):
+		_toggle_mode()
+
 	# ADS toggle (right mouse), only while the cursor is locked and a gun is equipped
 	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and Input.is_action_just_pressed("aim"):
 		_toggle_aim()
@@ -120,6 +128,8 @@ func apply_recoil(kick_v_deg: float, kick_h_deg: float, recover: float) -> void:
 
 
 func _toggle_aim() -> void:
+	if melee_mode:
+		return
 	var ws = get_node_or_null("WeaponSystem")
 	if ws == null:
 		return
@@ -128,3 +138,11 @@ func _toggle_aim() -> void:
 		return
 	aiming = not aiming
 	aim_changed.emit(aiming)
+
+
+func _toggle_mode() -> void:
+	melee_mode = not melee_mode
+	if melee_mode and aiming:
+		aiming = false
+		aim_changed.emit(false)
+	mode_changed.emit(melee_mode)

@@ -4,6 +4,8 @@ extends Control
 
 signal map_selected(id: String)
 signal ui_state_changed(open: bool)
+signal next_map_requested
+signal retry_requested
 
 var weapon_label: Label
 var ammo_label: Label
@@ -17,6 +19,9 @@ var settings_button: Button
 var settings_panel: Panel
 var volume_slider: HSlider
 var volume_value: Label
+
+var results_panel: Panel
+var results_stats: Label
 
 var _vp := Vector2(1280, 720)
 var _cross_parts: Array[ColorRect] = []
@@ -59,7 +64,7 @@ func _ready() -> void:
 	hint = _mk_label(Vector2(0, maxf(0.0, _vp.y - 46.0)), "", 15)
 	hint.size = Vector2(_vp.x, 24)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.text = "WASD 移动 · 左键 射击 · 右键 瞄准(切换) · R 换弹 · 1-6 切枪 · V 近战 · Esc 释放鼠标→设置"
+	hint.text = "WASD 移动 · 左键 射击/挥刀 · 右键 瞄准(切换) · R 换弹 · 1-6 切枪 / 1-3 切刀 · V 切换近战/远程 · Esc→设置"
 
 	settings_button = Button.new()
 	settings_button.text = "设置"
@@ -70,6 +75,7 @@ func _ready() -> void:
 	add_child(settings_button)
 
 	_build_settings_panel()
+	_build_results_panel()
 
 
 func _build_crosshair() -> void:
@@ -218,6 +224,59 @@ func _on_map_selected(id: String) -> void:
 	settings_panel.visible = false
 	ui_state_changed.emit(false)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _build_results_panel() -> void:
+	results_panel = Panel.new()
+	results_panel.size = Vector2(420, 280)
+	results_panel.position = Vector2(_vp.x * 0.5 - 210.0, _vp.y * 0.5 - 140.0)
+	results_panel.visible = false
+	add_child(results_panel)
+
+	var title := Label.new()
+	title.text = "地区清除"
+	title.position = Vector2(24, 20)
+	title.add_theme_font_size_override("font_size", 30)
+	results_panel.add_child(title)
+
+	results_stats = Label.new()
+	results_stats.text = ""
+	results_stats.position = Vector2(24, 84)
+	results_stats.add_theme_font_size_override("font_size", 18)
+	results_panel.add_child(results_stats)
+
+	var next_btn := Button.new()
+	next_btn.text = "下一张地图"
+	next_btn.position = Vector2(20, 190)
+	next_btn.size = Vector2(185, 50)
+	next_btn.add_theme_font_size_override("font_size", 17)
+	next_btn.pressed.connect(func(): next_map_requested.emit())
+	results_panel.add_child(next_btn)
+
+	var retry_btn := Button.new()
+	retry_btn.text = "重玩本图"
+	retry_btn.position = Vector2(215, 190)
+	retry_btn.size = Vector2(185, 50)
+	retry_btn.add_theme_font_size_override("font_size", 17)
+	retry_btn.pressed.connect(func(): retry_requested.emit())
+	results_panel.add_child(retry_btn)
+
+
+func show_results(kills_count: int, seconds: float) -> void:
+	if settings_panel:
+		settings_panel.visible = false
+	results_panel.visible = true
+	results_stats.text = "击杀 %d    ·    用时 %.1f 秒" % [kills_count, seconds]
+
+
+func hide_results() -> void:
+	if results_panel:
+		results_panel.visible = false
+
+
+func on_melee_changed(id: String, display: String) -> void:
+	weapon_label.text = "%s  (%s)" % [display, id]
+	ammo_label.text = "近战 / ∞"
 
 
 func on_weapon_changed(id: String, display: String) -> void:
